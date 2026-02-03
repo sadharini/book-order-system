@@ -1,9 +1,10 @@
-from sqlalchemy import Column, Integer, String,ForeignKey
+from sqlalchemy import Column, Integer, String,ForeignKey,Date
 from sqlalchemy.orm import relationship
 from database import Base
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import relationship
 from database import Base
+
 
 class Author(Base):
     __tablename__ = "authors"
@@ -26,6 +27,7 @@ class Book(Base):
     title = Column(String, nullable=False)
 
     author_id = Column(Integer, ForeignKey("authors.id"), nullable=False)
+    theme=Column(String,nullable=False)
 
     author = relationship("Author", back_populates="books")
     
@@ -53,6 +55,7 @@ class BookLoan(Base):
 
     user = relationship("User", back_populates="borrowed_books")
     book = relationship("Book")
+    loan_date = Column(Date, nullable=False)
     
 
 

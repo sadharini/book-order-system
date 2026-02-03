@@ -3,6 +3,7 @@ from database import engine, Base
 import models
 from sqlalchemy.orm import Session
 from sqlalchemy import func, select
+from datetime import date
 
 Base.metadata.create_all(bind=engine)
 
@@ -13,24 +14,30 @@ def root():
     return {"message": "Book Management System"}
 
 from fastapi import FastAPI, Depends
-from config import Settings, get_settings
 
 app = FastAPI()
 
-@app.get("/db-connection-status")
-def read_db_status(settings: Settings = Depends(get_settings)):
-    db_url = f"postgresql://{settings.database_user}:{settings.database_password}@{settings.database_host}:{settings.database_port}/{settings.database_name}"
-    return {"database_host": settings.database_host, "database_name": settings.database_name, "db_url_snippet": db_url[:30] + "..."}
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
 
 from database import get_db
-from schemas import UserCreate
-from models import User
-from schemas import AuthorCreate
-from models import Author
-from fastapi import HTTPException
-from models import Book, Author
-from schemas import BookCreate
-from schemas import GetUserDetails
+
+from models import User, Author, Book, BookLoan
+
+
+from schemas import (
+    UserCreate,
+    AuthorCreate,
+    BookCreate,
+    GetUserDetails,
+    BookDetailsResponse
+
+)
+from schemas import LendingDetails
+from schemas import FavouriteTheme
+from schemas import AuthorTheme
+from schemas import AuthorMaxTheme
+from schemas import UserMaxTheme
 
 
 
@@ -112,15 +119,102 @@ def get_user_counts(db: Session = Depends(get_db)):
         "max_count": result[1]
     }
 
-@app.get("/details")
+@app.get("/details", response_model=list[BookDetailsResponse])
 def get_book_details(db: Session = Depends(get_db)):
-    book_details=db.query(Book.id,Book.title,Author.email).join(Author,Book.author_id==Author.id).all()
-    print(book_details)
-    return [
-        {
-            "book_id": Book.id,
-            "title": Book.title,
-            "author_email": author.email
-        }
-        for book_id, title, author_email in book_details
-    ]
+
+    rows = (
+        db.query(
+            Book.id.label("book_id"),
+            Book.title.label("title"),
+            Author.email.label("author_email")
+        )
+        .join(Author, Book.author_id == Author.id)
+        .all()
+    )
+
+    return rows
+@app.get("/lendingdetails/{date}",response_model=list[LendingDetails])
+def get_lending_details(date:date,db:Session=Depends(get_db)):
+    rows=(
+        db.query(
+            BookLoan.user_id.label("user_id"),
+            BookLoan.book_id.label("book_id"),
+            BookLoan.loan_date.label("loan_date"),
+            Book.title.label("title")
+
+        )
+        .join(Book, BookLoan.book_id == Book.id)
+        .filter(BookLoan.loan_date==date)
+        .all()
+    )
+    return rows
+@app.get("/themes/{user}", response_model=list[FavouriteTheme])
+def get_theme_details(user:int,db: Session = Depends(get_db)):
+
+    rows = (
+        db.query(
+            Book.theme.label("book_theme"),
+            User.email.label("user_email")
+        )
+        .join(BookLoan, Book.id == BookLoan.book_id)
+        .join(User,User.id==BookLoan.user_id)
+        .filter(BookLoan.user_id==user)
+        .all()
+    )
+
+    return rows
+    
+@app.get("/authorthemes/{author}", response_model=list[AuthorTheme])
+def get_theme_details(author:int,db: Session = Depends(get_db)):
+
+    rows = (
+        db.query(
+            Book.theme.label("book_theme"),
+            Book.title.label("book_title"),
+            Author.name.label("author_name")
+        )
+        .join(Author, Author.id == Book.author_id)
+        .filter(Author.id==author)
+        .all()
+    )
+
+    return rows
+
+@app.get("/authormaxthemes/{author}", response_model=list[AuthorMaxTheme])
+def author_max_theme(author:int,db: Session = Depends(get_db)):
+
+    rows =(
+        db.query(
+            Book.theme.label("book_theme"),
+            func.count(Book.id).label("max_theme")
+        )
+        .group_by(Book.theme)
+        .filter(Book.author_id==author)
+        .order_by(func.count(Book.id).desc())
+        .limit(1)
+        .all()
+    )
+
+    return rows
+    
+@app.get("/usermaxthemes/{user}", response_model=list[UserMaxTheme])
+def user_max_theme(user:int,db: Session = Depends(get_db)):
+
+    rows =(
+        db.query(
+            Book.theme.label("book_theme"),
+            func.count(Book.id).label("max_theme")
+        )
+        .group_by(Book.theme)
+        .join(BookLoan,BookLoan.book_id==Book.id)
+        .filter(BookLoan.user_id==user)
+        .order_by(func.count(Book.id).desc())
+        .limit(1)
+        .all()
+    )
+
+    return rows
+
+
+
+
