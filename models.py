@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String,ForeignKey,Date
+from sqlalchemy import Column, Integer, String,ForeignKey,Date,BOOLEAN
 from sqlalchemy.orm import relationship
 from database import Base
 from sqlalchemy import Column, Integer, String
@@ -56,6 +56,7 @@ class BookLoan(Base):
     user = relationship("User", back_populates="borrowed_books")
     book = relationship("Book")
     loan_date = Column(Date, nullable=False)
+    book_returned=Column(BOOLEAN,default=False)
     
 
 

@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from datetime import date
+from pydantic import EmailStr
 
 class UserCreate(BaseModel):
     email:str
@@ -44,3 +45,13 @@ class AuthorMaxTheme(BaseModel):
 class UserMaxTheme(BaseModel):
     book_theme:str
     max_theme:int
+
+class AuthorEmailUpdate(BaseModel):
+    email:EmailStr
+    
+
+class BookNotReturned(BaseModel):
+    Book_title: str
+
+    class Config:
+        from_attributes = True

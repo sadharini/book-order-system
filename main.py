@@ -38,7 +38,8 @@ from schemas import FavouriteTheme
 from schemas import AuthorTheme
 from schemas import AuthorMaxTheme
 from schemas import UserMaxTheme
-
+from schemas import AuthorEmailUpdate
+from schemas import BookNotReturned
 
 
 @app.post("/users")
@@ -214,6 +215,24 @@ def user_max_theme(user:int,db: Session = Depends(get_db)):
     )
 
     return rows
+
+@app.put("/authoremailupdate/{author_id}")
+def author_email_update(author_id:int,data:AuthorEmailUpdate,db:Session=Depends(get_db)):
+    author=db.query(Author).filter(Author.id==author_id).first()
+    author.email=data.email
+    db.commit()
+    db.refresh(author)
+
+    return{
+        "message":"author email updated"
+    }
+@app.get("/booksnotreturned/{user_id}",response_model=list[BookNotReturned])
+def book_not_returned(user_id:int,db:Session=Depends(get_db)):
+    books=db.query(Book.title.label("Book_title")).join(BookLoan,Book.id==BookLoan.book_id).filter(BookLoan.user_id==user_id,BookLoan.book_returned==False).all()
+    return books
+
+
+
 
 
 
